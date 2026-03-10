@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Военная техника ВОВ</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0906;
+  --gold:#c8943a;
+  --gold2:#e8b855;
+  --red:#9e2222;
+  --red2:#c03030;
+  --green:#2e4a1c;
+  --green2:#3e6028;
+  --text:#c8bfa0;
+  --text2:#e0d4b0;
+  --smoke:#2a2820;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:Georgia,'Times New Roman',serif;color:var(--text)}
+canvas#bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 80% 80% at 50% 50%,transparent 40%,rgba(0,0,0,.75) 100%)}
+.grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:200px 200px}
+
+/* SCENE SYSTEM */
+.scene{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:3;opacity:0;transition:opacity 1s ease;padding:40px 60px;pointer-events:none}
+.scene.active{opacity:1;pointer-events:auto}
+
+/* PROGRESS */
+#progress{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;gap:10px;z-index:10;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(200,180,130,.25);transition:all .4s}
+.dot.active{background:var(--gold);transform:scale(1.3)}
+#btn-restart{display:none;position:fixed;bottom:60px;left:50%;transform:translateX(-50%);
+  z-index:10;background:transparent;border:1px solid var(--gold);color:var(--gold);
+  padding:8px 24px;font-family:Georgia,serif;font-size:13px;cursor:pointer;letter-spacing:2px;
+  transition:all .3s}
+#btn-restart:hover{background:var(--gold);color:#0a0906}
+
+/* TYPOGRAPHY */
+.title-huge{font-family:Impact,'Arial Black',sans-serif;font-size:clamp(28px,5vw,68px);
+  letter-spacing:4px;color:var(--gold2);text-transform:uppercase;text-align:center;line-height:1.1;
+  text-shadow:0 0 40px rgba(200,148,58,.4)}
+.title-big{font-family:Impact,'Arial Black',sans-serif;font-size:clamp(18px,3.2vw,44px);
+  letter-spacing:3px;color:var(--gold);text-transform:uppercase;text-align:center;line-height:1.2}
+.title-med{font-family:Impact,'Arial Black',sans-serif;font-size:clamp(14px,2.2vw,30px);
+  letter-spacing:2px;color:var(--text2);text-transform:uppercase;text-align:center}
+.subtitle{font-family:Georgia,serif;font-size:clamp(11px,1.4vw,17px);
+  color:var(--text);text-align:center;letter-spacing:1px;font-style:italic;line-height:1.6}
+.fact{font-family:'Courier New',Courier,monospace;font-size:clamp(10px,1.3vw,15px);
+  color:var(--text2);letter-spacing:1px;text-align:center;line-height:1.8}
+.stat-val{font-family:Impact,'Arial Black',sans-serif;font-size:clamp(20px,3.5vw,50px);
+  color:var(--gold2);letter-spacing:2px}
+.stat-label{font-family:Georgia,serif;font-size:clamp(9px,1vw,13px);color:var(--text);letter-spacing:1px}
+
+/* DECORATIVE */
+.divider{width:200px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:12px auto}
+.divider-sm{width:100px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:8px auto}
+.ornament{text-align:center;color:var(--gold);font-size:20px;letter-spacing:8px;opacity:.7}
+.badge{display:inline-block;border:1px solid var(--gold);padding:4px 14px;
+  font-family:'Courier New',monospace;font-size:clamp(9px,1.1vw,13px);
+  color:var(--gold);letter-spacing:2px;text-transform:uppercase}
+.red-accent{color:var(--red2)}
+.gold-accent{color:var(--gold2)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideLeft{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes starSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes arrowDraw{from{stroke-dashoffset:400}to{stroke-dashoffset:0}}
+@keyframes flagRise{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes glowPulse{0%,100%{text-shadow:0 0 20px rgba(200,148,58,.3)}50%{text-shadow:0 0 60px rgba(200,148,58,.7)}}
+@keyframes tankRoll{from{transform:translateX(-80px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes planefly{from{transform:translateX(-120%)}to{transform:translateX(120vw)}}
+@keyframes explosionBloom{0%{transform:scale(0);opacity:1}100%{transform:scale(3);opacity:0}}
+@keyframes countLine{from{width:0}to{width:100%}}
+
+.anim-delay-0{animation-delay:.1s}
+.anim-delay-1{animation-delay:.4s}
+.anim-delay-2{animation-delay:.8s}
+.anim-delay-3{animation-delay:1.2s}
+.anim-delay-4{animation-delay:1.7s}
+.anim-delay-5{animation-delay:2.2s}
+.anim-delay-6{animation-delay:2.8s}
+.anim-delay-7{animation-delay:3.5s}
+
+/* SCENE SPECIFIC */
+
+/* S1 INTRO */
+#star-wrap{position:relative;width:80px;height:80px;margin:0 auto 16px}
+.star-svg{animation:pulse 3s ease-in-out infinite}
+.star-rays{animation:starSpin 12s linear infinite;opacity:.3}
+
+/* S2 - MAP */
+.map-wrap{position:relative;width:min(500px,80vw);margin:0 auto}
+.arrow-path{fill:none;stroke:var(--red2);stroke-width:3;stroke-linecap:round;
+  stroke-dasharray:400;stroke-dashoffset:400}
+.arrow-path.active{animation:arrowDraw 1.5s ease forwards}
+
+/* S3 - INDUSTRY */
+.factory-row{display:flex;align-items:center;gap:20px;justify-content:center;flex-wrap:wrap}
+.progress-bar-wrap{width:min(400px,75vw);margin:10px auto}
+.progress-bar-bg{width:100%;height:12px;background:rgba(200,148,58,.15);border:1px solid rgba(200,148,58,.3)}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--gold));width:0;transition:width 3s ease}
+.progress-bar-fill.animate{width:100%}
+
+/* S4 - TANKS */
+.tanks-row{display:flex;align-items:flex-end;justify-content:center;gap:clamp(10px,3vw,40px);
+  flex-wrap:wrap;padding:10px 0}
+.tank-col{display:flex;flex-direction:column;align-items:center;gap:6px;
+  opacity:0;animation:fadeUp .6s ease forwards}
+.tank-col svg{width:clamp(80px,14vw,160px);height:auto}
+
+/* S5 - STALINGRAD */
+.stmap-wrap{width:min(400px,75vw);margin:0 auto}
+
+/* S6 - KURSK */
+.kursk-wrap{width:min(450px,80vw);margin:0 auto}
+
+/* S7 - AVIATION */
+.avi-split{display:flex;justify-content:center;gap:clamp(20px,5vw,80px);align-items:center;flex-wrap:wrap}
+.avi-side{display:flex;flex-direction:column;align-items:center;gap:10px}
+.avi-label-enemy{color:#888;font-size:clamp(9px,1.2vw,14px);letter-spacing:2px;text-transform:uppercase}
+.avi-label-soviet{color:var(--red2);font-size:clamp(9px,1.2vw,14px);letter-spacing:2px;text-transform:uppercase}
+.vs-text{font-family:Impact,sans-serif;font-size:clamp(16px,3vw,36px);color:var(--gold);opacity:.6}
+
+/* S8 - VICTORY */
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(10px,2vw,30px);max-width:500px;margin:0 auto}
+.stat-box{text-align:center;padding:12px;border:1px solid rgba(200,148,58,.2);
+  background:rgba(200,148,58,.04)}
+.berlin-wrap{margin:0 auto}
+
+/* PLANE EFFECT */
+.plane-fly{position:absolute;top:30%;animation:planefly 4s linear infinite;opacity:.5}
+.explosion{position:absolute;width:20px;height:20px;border-radius:50%;
+  background:radial-gradient(circle,#ff8020,transparent);animation:explosionBloom 1s ease forwards}
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<div class="vignette"></div>
+<div class="grain"></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENE 1: INTRO -->
+<!-- ═══════════════════════════════════════ -->
+<section class="scene" id="s1">
+  <div id="star-wrap">
+    <svg class="star-rays" width="80" height="80" viewBox="0 0 80 80" style="position:absolute;top:0;left:0">
+      <line x1="40" y1="2" x2="40" y2="18" stroke="#c8943a" stroke-width="1.5" opacity=".6"/>
+      <line x1="40" y1="62" x2="40" y2="78" stroke="#c8943a" stroke-width="1.5" opacity=".6"/>
+      <line x1="2" y1="40" x2="18" y2="40" stroke="#c8943a" stroke-width="1.5" opacity=".6"/>
+      <line x1="62" y1="40" x2="78" y2="40" stroke="#c8943a" stroke-width="1.5" opacity=".6"/>
+      <line x1="12" y1="12" x2="24" y2="24" stroke="#c8943a" stroke-width="1" opacity=".4"/>
+      <line x1="56" y1="56" x2="68" y2="68" stroke="#c8943a" stroke-width="1" opacity=".4"/>
+      <line x1="68" y1="12" x2="56" y2="24" stroke="#c8943a" stroke-width="1" opacity=".4"/>
+      <line x1="24" y1="56" x2="12" y2="68" stroke="#c8943a" stroke-width="1" opacity=".4"/>
+    </svg>
+    <svg class="star-svg" width="80" height="80" viewBox="0 0 80 80">
+      <polygon points="40,4 48,28 74,28 53,44 61,68 40,52 19,68 27,44 6,28 32,28"
+        fill="#9e2222" stroke="#c8943a" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <p class="ornament anim-delay-0" style="animation:fadeIn .8s ease both">· · ·</p>
+  <div class="divider" style="animation:fadeIn 1s .2s ease both"></div>
+
+  <h1 class="title-huge" style="animation:fadeUp .9s .3s ease both">Военная техника</h1>
+  <h2 class="title-big" style="animation:fadeUp .9s .6s ease both;color:var(--text2)">
+    Великой Отечественной Войны
+  </h2>
+
+  <div class="divider" style="animation:fadeIn 1s .9s ease both"></div>
+
+  <p class="badge" style="animation:fadeUp .7s 1s ease both;margin-top:10px">1941 — 1945</p>
+
+  <p class="subtitle" style="animation:fadeUp .8s 1.4s ease both;margin-top:16px;max-width:480px">
+    Роль бронетехники, авиации и артиллерии<br>в переломе хода Великой Отечественной войны
+  </p>
+
+  <div class="divider" style="animation:fadeIn 1s 1.8s ease both;margin-top:18px"></div>
+  <p class="ornament anim-delay-6" style="animation:fadeIn .8s 2s ease both;font-size:14px">✦  ✦  ✦</p>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENE 2: ВТОРЖЕНИЕ 22 ИЮНЯ 1941 -->
+<!-- ═══════════════════════════════════════ -->
+<section class="scene" id="s2">
+  <p class="badge" style="animation:fadeIn .6s .1s ease both;margin-bottom:14px;
+     border-color:var(--red2);color:var(--red2)">22 июня 1941</p>
+  <h2 class="title-big" style="animation:fadeUp .7s .2s ease both">Блицкриг</h2>
+  <p class="subtitle" style="animation:fadeUp .7s .5s ease both;margin-bottom:14px">
+    Германия обрушила молниеносный удар — без объявления войны
+  </p>
+
+  <!-- SVG MAP -->
+  <div class="map-wrap" style="animation:fadeIn 1s .6s ease both">
+    <svg id="invasion-map" viewBox="0 0 500 240" style="width:100%;height:auto">
+      <!-- Background -->
+      <rect width="500" height="240" fill="rgba(20,18,12,.7)" rx="4"/>
+      <!-- Simplified USSR outline -->
+      <path d="M60,80 L90,50 L130,40 L180,45 L230,30 L280,40 L320,35 L360,50 L400,60 L420,90 L430,120
+               L420,155 L400,175 L370,185 L330,200 L280,210 L230,215 L180,210 L130,200 L80,180 L55,160 L50,130 Z"
+        fill="rgba(40,60,28,.45)" stroke="rgba(80,100,50,.5)" stroke-width="1.5"/>
+      <!-- Rivers hint -->
+      <path d="M220,30 Q225,80 210,130 Q200,165 190,215" fill="none" stroke="rgba(80,120,160,.4)" stroke-width="1.5"/>
+      <!-- City dots -->
+      <circle cx="140" cy="95" r="4" fill="rgba(200,148,58,.7)"/>
+      <text x="145" y="93" fill="rgba(200,148,58,.8)" font-size="9" font-family="Georgia,serif">Ленинград</text>
+      <circle cx="215" cy="115" r="4" fill="rgba(200,148,58,.7)"/>
+      <text x="220" y="113" fill="rgba(200,148,58,.8)" font-size="9" font-family="Georgia,serif">Москва</text>
+      <circle cx="175" cy="155" r="3" fill="rgba(200,148,58,.5)"/>
+      <text x="180" y="153" fill="rgba(200,148,58,.6)" font-size="8" font-family="Georgia,serif">Киев</text>
+      <circle cx="265" cy="185" r="3" fill="rgba(200,148,58,.5)"/>
+      <text x="270" y="183" fill="rgba(200,148,58,.6)" font-size="8" font-family="Georgia,serif">Сталинград</text>
+
+      <!-- Invasion arrows (will be animated) -->
+      <!-- North arrow (Army Group North) -->
+      <path id="arr1" class="arrow-path" d="M50,70 Q90,72 130,90 L148,100"/>
+      <polygon id="arh1" points="148,100 137,93 141,106" fill="#c03030" opacity="0"/>
+      <!-- Center arrow (Army Group Centre) -->
+      <path id="arr2" class="arrow-path" d="M45,115 Q90,112 140,114 L175,115" style="animation-delay:.3s"/>
+      <polygon id="arh2" points="175,115 163,108 164,122" fill="#c03030" opacity="0"/>
+      <!-- South arrow (Army Group South) -->
+      <path id="arr3" class="arrow-path" d="M50,160 Q85,155 125,155 L168,158" style="animation-delay:.6s"/>
+      <polygon id="arh3" points="168,158 157,150 157,166" fill="#c03030" opacity="0"/>
+
+      <!-- Plane silhouettes (enemy) -->
+      <g id="planes-group" opacity="0">
+        <g transform="translate(80,55) scale(.6)">
+          <ellipse cx="20" cy="6" rx="20" ry="4" fill="#555"/>
+          <polygon points="8,6 20,0 32,6" fill="#444"/>
+          <rect x="35" y="4" width="12" height="3" fill="#555"/>
+        </g>
+        <g transform="translate(60,130) scale(.5)">
+          <ellipse cx="20" cy="6" rx="20" ry="4" fill="#555"/>
+          <polygon points="8,6 20,0 32,6" fill="#444"/>
+          <rect x="35" y="4" width="12" height="3" fill="#555"/>
+        </g>
+      </g>
+
+      <!-- Loss text -->
+      <text x="250" y="50" fill="rgba(200,60,60,.9)" font-size="11" font-family="Impact,sans-serif"
+        text-anchor="middle" id="loss-text" opacity="0">1 200 советских самолётов</text>
+      <text x="250" y="63" fill="rgba(200,60,60,.8)" font-size="9" font-family="Georgia,serif"
+        text-anchor="middle" id="loss-text2" opacity="0">уничтожено в первый день войны</text>
+    </svg>
+  </div>
+
+  <div style="display:flex;gap:clamp(14px,4vw,50px);margin-top:16px;flex-wrap:wrap;justify-content:center">
+    <div style="text-align:center;animation:fadeUp .6s 1.4s ease both">
+      <div class="stat-val red-accent" id="counter1">0</div>
+      <div class="stat-label">армейских группы Германии</div>
+    </div>
+    <div style="text-align:center;animation:fadeUp .6s 1.7s ease both">
+      <div class="stat-val gold-accent">3.8 млн</div>
+      <div class="stat-label">солдат Вермахта на границе</div>
+    </div>
+    <div style="text-align:center;animation:fadeUp .6s 2s ease both">
+      <div class="stat-val red-accent">4:00</div>
+      <div class="stat-label">время начала нападения</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENE 3: ПРОМЫШЛЕННОСТЬ -->
+<!-- ═══════════════════════════════════════ -->
+<section class="scene" id="s3">
+  <h2 class="title-big" style="animation:fadeUp .7s .1s ease both">Промышленная мобилизация</h2>
+  <div class="divider" style="animation:fadeIn .6s .4s ease both"></div>
+
+  <!-- Factory → Train → Ural illustration -->
+  <div class="factory-row" style="animation:fadeIn .8s .5s ease both;margin:16px 0">
+
+    <!-- Factory icon -->
+    <div style="text-align:center">
+      <svg viewBox="0 0 90 70" style="width:clamp(65px,10vw,90px);height:auto">
+        <rect x="10" y="35" width="70" height="30" fill="rgba(60,90,40,.6)" stroke="rgba(100,130,70,.4)" stroke-width="1"/>
+        <rect x="20" y="20" width="15" height="15" fill="rgba(50,80,35,.7)"/>
+        <rect x="45" y="15" width="12" height="20" fill="rgba(50,80,35,.7)"/>
+        <rect x="65" y="25" width="10" height="10" fill="rgba(50,80,35,.7)"/>
+        <!-- Chimney smoke -->
+        <circle cx="27" cy="13" r="3" fill="rgba(100,100,90,.5)"/>
+        <circle cx="30" cy="7" r="4" fill="rgba(90,90,80,.4)"/>
+        <circle cx="51" cy="8" r="3" fill="rgba(100,100,90,.5)"/>
+        <circle cx="54" cy="3" r="4" fill="rgba(90,90,80,.4)"/>
+      </svg>
+      <p style="font-size:9px;color:var(--text);letter-spacing:1px;margin-top:4px">ЗАПАД</p>
+    </div>
+
+    <!-- Arrow + Train -->
+    <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px">
+      <svg viewBox="0 0 120 30" style="width:clamp(80px,14vw,120px);height:auto">
+        <line x1="0" y1="15" x2="110" y2="15" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <polygon points="110,15 96,10 96,20" fill="var(--gold)"/>
+        <!-- Train -->
+        <rect x="30" y="8" width="35" height="14" rx="2" fill="rgba(60,80,50,.8)" stroke="rgba(120,140,80,.5)" stroke-width="1"/>
+        <rect x="18" y="11" width="15" height="11" rx="1" fill="rgba(50,70,40,.8)"/>
+        <circle cx="25" cy="22" r="3" fill="rgba(40,55,30,.9)"/>
+        <circle cx="50" cy="22" r="3" fill="rgba(40,55,30,.9)"/>
+        <circle cx="62" cy="22" r="3" fill="rgba(40,55,30,.9)"/>
+      </svg>
+      <p style="font-size:9px;color:var(--gold);letter-spacing:2px">→ → →</p>
+    </div>
+
+    <!-- Ural mountains -->
+    <div style="text-align:center">
+      <svg viewBox="0 0 90 70" style="width:clamp(65px,10vw,90px);height:auto">
+        <polygon points="5,65 25,20 45,40 65,15 85,65" fill="rgba(40,60,30,.6)" stroke="rgba(80,110,60,.4)" stroke-width="1"/>
+        <polygon points="25,65 40,30 55,65" fill="rgba(50,75,38,.5)"/>
+        <!-- Snow caps -->
+        <polygon points="25,20 18,38 32,38" fill="rgba(200,195,180,.15)"/>
+        <polygon points="65,15 57,34 73,34" fill="rgba(200,195,180,.15)"/>
+        <!-- New factory -->
+        <rect x="55" y="50" width="25" height="12" fill="rgba(200,148,58,.4)" stroke="rgba(200,148,58,.5)" stroke-width="1"/>
+        <rect x="60" y="44" width="5" height="8" fill="rgba(200,148,58,.5)"/>
+      </svg>
+      <p style="font-size:9px;color:var(--gold);letter-spacing:1px;margin-top:4px">УРАЛ / СИБИРЬ</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(8px,2vw,24px);
+    max-width:520px;margin:12px auto;width:100%">
+    <div style="text-align:center;animation:fadeUp .6s .8s ease both">
+      <div class="stat-val gold-accent">1 500<span style="font-size:.5em">+</span></div>
+      <div class="stat-label">предприятий<br>эвакуировано</div>
+    </div>
+    <div style="text-align:center;animation:fadeUp .6s 1.1s ease both">
+      <div class="stat-val gold-accent">×4.3</div>
+      <div class="stat-label">рост военного<br>производства к 1943</div>
+    </div>
+    <div style="text-align:center;animation:fadeUp .6s 1.4s ease both">
+      <div class="stat-val red-accent">−14%</div>
+      <div class="stat-label">снижение<br>себестоимости</div>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap" style="animation:fadeIn .6s 1.6s ease both">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <span style="font-size:10px;color:var(--text);letter-spacing:1px">СССР: производство 1940</span>
+      <span style="font-size:10px;color:var(--gold);letter-spacing:1px">1943: ×4.3</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="bar-industry"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px">
+      <span style="font-size:10px;color:var(--text)">Германия</span>
+      <span style="font-size:10px;color:#888">×2.5 — значительно меньше</span>
+    </div>
+  </div>
+
+  <p class="subtitle" style="animation:fadeUp .6s 2s ease both;margin-top:12px;font-style:normal">
+    <span style="color:var(--gold)">«Всё для фронта! Всё для победы!»</span>
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENE 4: ЭВОЛЮЦИЯ ТАНКОВ -->
+<!-- ═══════════════════════════════════════ -->
+<section class="scene" id="s4">
+  <h2 class="title-big" style="animation:fadeUp .7s .1s ease both">Эволюция танков</h2>
+  <p class="subtitle" style="animation:fadeUp .6s .4s ease both;margin-bottom:16px">
+    От устаревшей техники 1941-го — к лучшим боевым машинам войны
+  </p>
+
+  <div class="tanks-row">
+    <!-- T-26 -->
+    <div class="tank-col" style="animation-delay:.5s">
+      <svg viewBox="0 0 120 52" style="width:clamp(75px,12vw,130px)">
+        <rect x="2" y="35" width="116" height="11" rx="5" fill="rgba(50,70,35,.8)"/>
+        <circle cx="12" cy="40" r="4" fill="rgba(35,50,22,.9)"/><circle cx="30" cy="40" r="4" fill="rgba(35,50,22,.9)"/>
+        <circle cx="50" cy="40" r="4" fill="rgba(35,50,22,.9)"/><circle cx="70" cy="40" r="4" fill="rgba(35,50,22,.9)"/>
+        <circle cx="90" cy="40" r="4" fill="rgba(35,50,22,.9)"/><circle cx="108" cy="40" r="4" fill="rgba(35,50,22,.9)"/>
+        <polygon points="8,35 15,20 105,20 112,35" fill="rgba(60,85,42,.85)"/>
+        <!-- Small round turret -->
+        <ellipse cx="60" cy="20" rx="18" ry="8" fill="rgba(70,95,50,.9)"/>
+        <rect x="78" y="17" width="20" height="3.5" rx="1.5" fill="rgba(50,70,35,.9)"/>
+        <circle cx="55" cy="18" r="2.5" fill="rgba(55,78,40,.9)" stroke="rgba(80,110,60,.4)" stroke-width=".8"/>
+      </svg>
+      <span class="badge" style="font-size:9px;padding:2px 8px;border-color:rgba(200,148,58,.4)">Т-26</span>
+      <span class="stat-label">1941 · Устарел</span>
+      <span style="font-size:8px;color:var(--red2)">противопульная броня</span>
+    </div>
+
+    <!-- T-34-76 -->
+    <div class="tank-col" style="animation-delay:.9s">
+      <svg viewBox="0 0 130 55" style="width:clamp(90px,14vw,155px)">
+        <rect x="1" y="37" width="128" height="12" rx="6" fill="rgba(45,70,28,.9)"/>
+        <circle cx="12" cy="43" r="5" fill="rgba(30,50,18,.9)"/><circle cx="32" cy="43" r="5" fill="rgba(30,50,18,.9)"/>
+        <circle cx="55" cy="43" r="5" fill="rgba(30,50,18,.9)"/><circle cx="78" cy="43" r="5" fill="rgba(30,50,18,.9)"/>
+        <circle cx="100" cy="43" r="5" fill="rgba(30,50,18,.9)"/><circle cx="118" cy="43" r="5" fill="rgba(30,50,18,.9)"/>
+        <!-- Sloped hull -->
+        <polygon points="5,37 18,20 112,20 124,37" fill="rgba(58,88,38,.9)"/>
+        <!-- Rounded turret -->
+        <ellipse cx="68" cy="20" rx="24" ry="10" fill="rgba(68,100,46,.95)"/>
+        <rect x="92" y="16" width="30" height="4" rx="2" fill="rgba(48,75,30,.9)"/>
+        <circle cx="62" cy="17" r="3" fill="rgba(58,88,38,.9)" stroke="rgba(90,130,60,.5)" stroke-width="1"/>
+        <text x="65" y="24" fill="rgba(200,60,60,.7)" font-size="8" text-anchor="middle">★</text>
+      </svg>
+      <span class="badge" style="font-size:9px;padding:2px 8px">Т-34-76</span>
+      <span class="stat-label">1941 · Прорыв</span>
+      <span style="font-size:8px;color:var(--gold)">76-мм пушка</span>
+    </div>
+
+    <!-- T-34-85 -->
+    <div class="tank-col" style="animation-delay:1.4s">
+      <svg viewBox="0 0 135 55" style="width:clamp(95px,15vw,165px)">
+        <rect x="1" y="37" width="133" height="13" rx="6" fill="rgba(42,68,25,.95)"/>
+        <circle cx="12" cy="43" r="5.5" fill="rgba(28,48,16,.9)"/><circle cx="33" cy="43" r="5.5" fill="rgba(28,48,16,.9)"/>
+        <circle cx="57" cy="43" r="5.5" fill="rgba(28,48,16,.9)"/><circle cx="80" cy="43" r="5.5" fill="rgba(28,48,16,.9)"/>
+        <circle cx="103" cy="43" r="5.5" fill="rgba(28,48,16,.9)"/><circle cx="122" cy="43" r="5.5" fill="rgba(28,48,16,.9)"/>
+        <polygon points="4,37 17,19 113,19 126,37" fill="rgba(55,85,35,.95)"/>
+        <!-- Larger turret for 85mm -->
+        <ellipse cx="70" cy="19" rx="27" ry="11" fill="rgba(65,98,43,1)"/>
+        <rect x="97" y="15" width="35" height="4.5" rx="2" fill="rgba(45,72,28,1)"/>
+        <circle cx="63" cy="16" r="3" fill="rgba(55,85,35,.9)" stroke="rgba(90,130,60,.5)" stroke-width="1"/>
+        <text x="68" y="23" fill="rgba(220,60,60,.8)" font-size="9" text-anchor="middle">★</text>
+      </svg>
+      <span class="badge" style="font-size:9px;padding:2px 8px;border-color:var(--gold);color:var(--gold2)">Т-34-85</span>
+      <span class="stat-label">1944 · Господство</span>
+      <span style="font-size:8px;color:var(--gold2)">85-мм пушка</span>
+    </div>
+
+    <!-- IS-2 -->
+    <div class="tank-col" style="animation-delay:1.9s">
+      <svg viewBox="0 0 140 58" style="width:clamp(98px,16vw,175px)">
+        <rect x="0" y="38" width="140" height="14" rx="7" fill="rgba(38,62,22,.95)"/>
+        <circle cx="12" cy="45" r="6" fill="rgba(25,44,14,.9)"/><circle cx="34" cy="45" r="6" fill="rgba(25,44,14,.9)"/>
+        <circle cx="60" cy="45" r="6" fill="rgba(25,44,14,.9)"/><circle cx="85" cy="45" r="6" fill="rgba(25,44,14,.9)"/>
+        <circle cx="110" cy="45" r="6" fill="rgba(25,44,14,.9)"/><circle cx="130" cy="45" r="6" fill="rgba(25,44,14,.9)"/>
+        <!-- Heavy sloped hull -->
+        <polygon points="3,38 20,18 118,18 132,38" fill="rgba(50,80,30,.95)"/>
+        <!-- Large turret -->
+        <ellipse cx="72" cy="18" rx="30" ry="12" fill="rgba(60,92,40,1)"/>
+        <!-- Very long 122mm gun -->
+        <rect x="102" y="13" width="45" height="5" rx="2.5" fill="rgba(42,66,24,1)"/>
+        <circle cx="65" cy="15" r="3.5" fill="rgba(50,80,30,.9)" stroke="rgba(90,130,60,.5)" stroke-width="1"/>
+        <text x="70" y="21" fill="rgba(220,60,60,.9)" font-size="10" text-anchor="middle">★</text>
+        <!-- Extra armor detail -->
+        <path d="M20,26 Q35,22 50,23" fill="none" stroke="rgba(80,120,50,.3)" stroke-width="1"/>
+      </svg>
+      <span class="badge" style="font-size:9px;padding:2px 8px;border-color:var(--red2);color:var(--red2)">ИС-2</span>
+      <span class="stat-label">1944 · Непобедим</span>
+      <span style="font-size:8px;color:var(--red2)">122-мм пушка</span>
+    </div>
+  </div>
+
+  <div class="divider" style="animation:fadeIn .6s 2.5s ease both"></div>
+  <p class="fact" style="animation:fadeUp .6s 2.6s ease both">
+    Т-34 — <span class="gold-accent">самый массовый танк Второй мировой войны</span> · 58 000+ машин
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENE 5: СТАЛИНГРАД -->
+<!-- ═══════════════════════════════════════ -->
+<section class="scene" id="s5">
+  <p class="badge" style="animation:fadeIn .6s .1s ease both;border-color:var(--red2);color:var(--red2);margin-bottom:10px">
+    Ноябрь 1942
+  </p>
+  <h2 class="title-big" style="animation:fadeUp .7s .2s ease both">Сталинград</h2>
+  <p class="title-med" style="animation:fadeUp .6s .45s ease both;color:var(--gold);font-size:clamp(12px,2vw,22px)">
+    Операция «Уран»
+  </p>
+
+  <div class="stmap-wrap" style="animation:fadeIn .8s .6s ease both">
+    <svg id="stmap" viewBox="0 0 380 220" style="width:100%;height:auto">
+      <rect width="380" height="220" fill="rgba(15,13,8,.75)" rx="4"/>
+
+      <!-- Volga river -->
+      <path d="M270,5 Q278,60 275,110 Q272,160 268,220"
+        fill="none" stroke="rgba(80,120,180,.5)" stroke-width="5"/>
+      <text x="276" y="115" fill="rgba(80,120,180,.5)" font-size="8" font-family="Georgia,serif">Волга</text>
+
+      <!-- City area -->
+      <rect x="205" y="60" width="60" height="100" rx="3" fill="rgba(60,50,30,.5)" stroke="rgba(120,100,50,.4)" stroke-width="1"/>
+      <text x="235" y="115" fill="rgba(200,148,58,.8)" font-size="9" font-family="Georgia,serif" text-anchor="middle">Сталинград</text>
+
+      <!-- German forces (center) -->
+      <g id="ger-forces" opacity="0">
+        <rect x="140" y="90" width="65" height="40" rx="2" fill="rgba(80,75,60,.4)" stroke="rgba(130,120,90,.3)" stroke-width="1"/>
+        <text x="172" y="114" fill="rgba(180,170,140,.6)" font-size="8" text-anchor="middle" font-family="Georgia,serif">6-я армия</text>
+        <text x="172" y="124" fill="rgba(180,170,140,.5)" font-size="7" text-anchor="middle" font-family="Georgia,serif">Паулюс</text>
+      </g>
+
+      <!-- Northern attack arrow (Jukov) -->
+      <path id="sn-arr" d="M70,30 Q100,30 130,50 Q155,68 162,88"
+        fill="none" stroke="#c03030" stroke-width="3" stroke-linecap="round"
+        stroke-dasharray="300" stroke-dashoffset="300"/>
+      <polygon id="sn-head" points="162,88 150,76 166,74" fill="#c03030" opacity="0"/>
+
+      <!-- Southern attack arrow -->
+      <path id="ss-arr" d="M70,190 Q100,188 130,170 Q150,155 162,135"
+        fill="none" stroke="#c03030" stroke-width="3" stroke-linecap="round"
+        stroke-dasharray="300" stroke-dashoffset="300" style="animation-delay:.4s"/>
+      <polygon id="ss-head" points="162,135 150,147 166,147" fill="#c03030" opacity="0"/>
+
+      <!-- Encirclement ring (appears after) -->
+      <ellipse id="encircle" cx="175" cy="112" rx="50" ry="38"
+        fill="none" stroke="#c8943a" stroke-width="2" stroke-dasharray="8,5" opacity="0"/>
+
+      <!-- Labels -->
+      <text x="60" y="28" fill="rgba(180,60,60,.9)" font-size="9" font-family="Impact,sans-serif">5-я Танк. А</text>
+      <text x="60" y="188" fill="rgba(180,60,60,.9)" font-size="9" font-family="Impact,sans-serif">51-я Армия</text>
+      <text x="175" y="175" fill="rgba(200,148,58,.9)" font-size="9" font-family="Impact,sans-serif" text-anchor="middle" id="encircle-text" opacity="0">ОКРУЖЕНИЕ</text>
+    </svg>
+  </div>
+
+  <div style="display:flex;gap:clamp(16px,4vw,50px);margin-top:12px;flex-wrap:wrap;justify-content:center">
+    <div style="text-align:center;animation:fadeUp .6s 2.2s ease both">
+      <div class="stat-val red-accent">300 000</div>
+      <div class="stat-label">солдат 6-й армии окружены</div>
+    </div>
+    <div style="text-align:center;animation:fadeUp .6s 2.5s ease both">
+      <div class="stat-val gold-accent">Охват</div>
+      <div class="stat-label">а не лобовой удар — тактика победы</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENE 6: КУРСКАЯ ДУГА -->
+<!-- ═══════════════════════════════════════ -->
+<section class="scene" id="s6">
+  <p class="badge" style="animation:fadeIn .5s .1s ease both;border-color:var(--gold);color:var(--gold);margin-bottom:10px">
+    Июль — Август 1943
+  </p>
+  <h2 class="title-big" style="animation:fadeUp .7s .2s ease both">Курская дуга</h2>
+  <p class="subtitle" style="animation:fadeUp .6s .4s ease both;margin-bottom:12px">
+    Крупнейшее танковое сражение в истории
+  </p>
+
+  <div class="kursk-wrap" style="animation:fadeIn .8s .5s ease both">
+    <svg id="kursk-map" viewBox="0 0 420 200" style="width:100%;height:auto">
+      <rect width="420" height="200" fill="rgba(15,13,8,.75)" rx="4"/>
+
+      <!-- Front lines -->
+      <!-- German line (outer) -->
+      <path d="M30,30 L200,15 L390,30 L390,170 L200,185 L30,170 Z"
+        fill="rgba(60,55,42,.35)" stroke="rgba(120,110,80,.4)" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <!-- Soviet salient (bulge inward) -->
+      <path id="salient" d="M120,30 Q200,80 280,30 L280,170 Q200,120 120,170 Z"
+        fill="rgba(40,65,25,.45)" stroke="rgba(80,120,50,.5)" stroke-width="2"/>
+
+      <text x="210" y="105" fill="rgba(100,150,60,.7)" font-size="11" text-anchor="middle" font-family="Impact,sans-serif">Курск</text>
+
+      <!-- German attack arrows (N and S) -->
+      <path id="kn-arr" d="M200,18 Q200,45 200,65"
+        fill="none" stroke="#c03030" stroke-width="3" stroke-linecap="round"
+        stroke-dasharray="200" stroke-dashoffset="200"/>
+      <polygon id="kn-head" points="200,65 193,52 207,52" fill="#c03030" opacity="0"/>
+      <text x="200" y="14" fill="rgba(200,60,60,.7)" font-size="8" text-anchor="middle" font-family="Impact,sans-serif">АГ «Центр»</text>
+
+      <path id="ks-arr" d="M200,182 Q200,155 200,135"
+        fill="none" stroke="#c03030" stroke-width="3" stroke-linecap="round"
+        stroke-dasharray="200" stroke-dashoffset="200" style="animation-delay:.3s"/>
+      <polygon id="ks-head" points="200,135 193,148 207,148" fill="#c03030" opacity="0"/>
+      <text x="200" y="196" fill="rgba(200,60,60,.7)" font-size="8" text-anchor="middle" font-family="Impact,sans-serif">АГ «Юг»</text>
+
+      <!-- Soviet counter-arrows -->
+      <path id="kc1" d="M120,70 Q90,50 65,35"
+        fill="none" stroke="#c8943a" stroke-width="2.5" stroke-linecap="round"
+        stroke-dasharray="150" stroke-dashoffset="150"/>
+      <polygon id="kch1" points="65,35 75,48 59,46" fill="#c8943a" opacity="0"/>
+
+      <path id="kc2" d="M280,70 Q310,50 340,35"
+        fill="none" stroke="#c8943a" stroke-width="2.5" stroke-linecap="round"
+        stroke-dasharray="150" stroke-dashoffset="150"/>
+      <polygon id="kch2" points="340,35 330,48 346,46" fill="#c8943a" opacity="0"/>
+
+      <path id="kc3" d="M120,130 Q90,150 65,165"
+        fill="none" stroke="#c8943a" stroke-width="2.5" stroke-linecap="round"
+        stroke-dasharray="150" stroke-dashoffset="150"/>
+      <polygon id="kch3" points="65,165 75,152 59,154" fill="#c8943a" opacity="0"/>
+
+      <path id="kc4" d="M280,130 Q310,150 340,165"
+        fill="none" stroke="#c8943a" stroke-width="2.5" stroke-linecap="round"
+        stroke-dasharray="150" stroke-dashoffset="150"/>
+      <polygon id="kch4" points="340,165 330,152 346,154" fill="#c8943a" opacity="0"/>
+
+      <!-- Legend -->
+      <line x1="310" y1="95" x2="340" y2="95" stroke="#c03030" stroke-width="2"/>
+      <text x="344" y="98" fill="rgba(200,80,80,.8)" font-size="8" font-family="Georgia,serif">Германия</text>
+      <line x1="310" y1="108" x2="340" y2="108" stroke="#c8943a" stroke-width="2"/>
+      <text x="344" y="111" fill="rgba(200,148,58,.8)" font-size="8" font-family="Georgia,serif">Контрудар СССР</text>
+    </svg>
+  </div>
+
+  <div style="display:flex;gap:clamp(12px,3vw,40px);margin-top:12px;flex-wrap:wrap;justify-content:center">
+    <div style="text-align:center;animation:fadeUp .6s 2s ease both">
+      <div class="stat-val gold-accent">6 000</div>
+      <div class="stat-label">танков и CAУ</div>
+    </div>
+    <div style="text-align:center;animation:fadeUp .6s 2.3s ease both">
+      <div class="stat-val red-accent">200–250</div>
+      <div class="stat-label">орудий на км фронта</div>
+    </div>
+    <div style="text-align:center;animation:fadeUp .6s 2.6s ease both">
+      <div class="stat-val gold-accent">→</div>
+      <div class="stat-label">стратегическая инициатива<br>перешла к СССР</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENE 7: АВИАЦИЯ -->
+<!-- ═══════════════════════════════════════ -->
+<section class="scene" id="s7">
+  <h2 class="title-big" style="animation:fadeUp .7s .1s ease both">Господство в небе</h2>
+  <div class="divider" style="animation:fadeIn .5s .3s ease both"></div>
+
+  <div class="avi-split" style="animation:fadeIn .8s .5s ease both;margin:16px 0">
+    <!-- Enemy side 1941 -->
+    <div class="avi-side" style="animation:slideLeft .7s .6s ease both">
+      <p class="avi-label-enemy">1941 — Люфтваффе</p>
+      <!-- Bf-109 silhouette (enemy, darker) -->
+      <svg viewBox="0 0 130 55" style="width:clamp(90px,14vw,160px);opacity:.65">
+        <ellipse cx="52" cy="28" rx="48" ry="9" fill="#4a4540"/>
+        <polygon points="10,28 52,18 90,28 52,38" fill="#3a3530"/>
+        <rect x="90" y="24" width="35" height="4" rx="2" fill="#4a4540"/>
+        <polygon points="105,20 118,14 118,21" fill="#3a3530"/>
+        <polygon points="5,28 12,22 12,34" fill="#3a3530"/>
+        <!-- Iron cross hint -->
+        <text x="52" y="31" fill="rgba(120,120,110,.5)" font-size="10" text-anchor="middle">✛</text>
+      </svg>
+      <p style="font-size:9px;color:#777;letter-spacing:1px;text-align:center">Bf 109 · Ju 87</p>
+      <p style="font-size:9px;color:var(--red2);letter-spacing:1px;text-align:center">Уничтожено 1 200 советских</p>
+      <p style="font-size:9px;color:var(--red2);letter-spacing:1px;text-align:center">самолётов в первый день</p>
+    </div>
+
+    <!-- VS / arrow -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;animation:fadeIn .6s 1s ease both">
+      <div class="vs-text">→</div>
+      <div style="font-size:9px;color:var(--text);letter-spacing:1px;text-align:center">1941–1944</div>
+      <div style="font-size:9px;color:var(--gold);letter-spacing:1px;text-align:center">перелом</div>
+    </div>
+
+    <!-- Soviet side 1944 -->
+    <div class="avi-side" style="animation:slideRight .7s .6s ease both">
+      <p class="avi-label-soviet">1944 — ВВС СССР</p>
+      <!-- Il-2 silhouette (Soviet) -->
+      <svg viewBox="0 0 140 55" style="width:clamp(100px,16vw,180px)">
+        <ellipse cx="55" cy="28" rx="52" ry="10" fill="rgba(50,80,32,.85)"/>
+        <polygon points="8,28 55,15 105,28 55,42" fill="rgba(42,68,26,.9)"/>
+        <!-- Armored nose -->
+        <ellipse cx="12" cy="28" rx="14" ry="11" fill="rgba(38,62,22,.9)"/>
+        <rect x="105" y="24" width="30" height="4" rx="2" fill="rgba(42,68,26,.9)"/>
+        <polygon points="118,20 132,14 132,21" fill="rgba(38,62,22,.9)"/>
+        <!-- Red star -->
+        <text x="55" y="32" fill="rgba(200,40,40,.85)" font-size="13" text-anchor="middle">★</text>
+      </svg>
+      <p style="font-size:9px;color:var(--gold);letter-spacing:1px;text-align:center">Ил-2 · Як-3 · Ла-7</p>
+      <div style="border:1px solid rgba(200,148,58,.4);padding:4px 10px;margin-top:4px">
+        <p style="font-size:9px;color:var(--gold2);letter-spacing:1px;text-align:center">36 000+ машин Ил-2</p>
+        <p style="font-size:8px;color:var(--text);text-align:center">«Летающий танк»</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider" style="animation:fadeIn .5s 1.5s ease both"></div>
+
+  <div style="display:flex;gap:clamp(12px,3vw,40px);flex-wrap:wrap;justify-content:center;animation:fadeUp .6s 1.6s ease both">
+    <div style="text-align:center">
+      <div class="stat-label">Штурмовая поддержка</div>
+      <div style="font-size:10px;color:var(--text);margin-top:2px">удары по танкам и позициям</div>
+    </div>
+    <div style="color:var(--gold);opacity:.4;font-size:20px">|</div>
+    <div style="text-align:center">
+      <div class="stat-label">Прикрытие войск</div>
+      <div style="font-size:10px;color:var(--text);margin-top:2px">свобода манёвра на земле</div>
+    </div>
+    <div style="color:var(--gold);opacity:.4;font-size:20px">|</div>
+    <div style="text-align:center">
+      <div class="stat-label">Разведка</div>
+      <div style="font-size:10px;color:var(--text);margin-top:2px">фотографирование позиций</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCENE 8: ПОБЕДА -->
+<!-- ═══════════════════════════════════════ -->
+<section class="scene" id="s8">
+  <!-- Berlin skyline -->
+  <div style="animation:fadeIn .8s .1s ease both;width:min(500px,85vw);margin:0 auto 12px">
+    <svg viewBox="0 0 500 100" style="width:100%;height:auto;opacity:.55">
+      <!-- Berlin silhouette -->
+      <rect x="0" y="80" width="500" height="20" fill="rgba(30,28,20,.8)"/>
+      <!-- Buildings -->
+      <rect x="10" y="50" width="30" height="30" fill="rgba(30,28,20,.7)"/>
+      <rect x="50" y="40" width="20" height="40" fill="rgba(30,28,20,.7)"/>
+      <rect x="80" y="35" width="15" height="45" fill="rgba(30,28,20,.75)"/>
+      <rect x="100" y="60" width="25" height="20" fill="rgba(30,28,20,.65)"/>
+      <rect x="135" y="30" width="12" height="50" fill="rgba(30,28,20,.8)"/>
+      <!-- Reichstag-ish dome -->
+      <rect x="155" y="45" width="50" height="35" fill="rgba(30,28,20,.7)"/>
+      <ellipse cx="180" cy="45" rx="18" ry="10" fill="rgba(30,28,20,.7)"/>
+      <rect x="178" y="20" width="4" height="30" fill="rgba(30,28,20,.8)"/>
+      <!-- Flag on top of building -->
+      <rect x="180" y="18" width="3" height="12" fill="#9e2222"/>
+      <polygon points="183,18 195,22 183,26" fill="#c03030"/>
+      <rect x="220" y="55" width="30" height="25" fill="rgba(30,28,20,.65)"/>
+      <rect x="260" y="45" width="18" height="35" fill="rgba(30,28,20,.7)"/>
+      <rect x="290" y="65" width="40" height="15" fill="rgba(30,28,20,.6)"/>
+      <rect x="345" y="40" width="22" height="40" fill="rgba(30,28,20,.75)"/>
+      <rect x="378" y="55" width="35" height="25" fill="rgba(30,28,20,.65)"/>
+      <rect x="425" y="35" width="18" height="45" fill="rgba(30,28,20,.7)"/>
+      <rect x="455" y="60" width="30" height="20" fill="rgba(30,28,20,.65)"/>
+    </svg>
+  </div>
+
+  <div style="animation:glowPulse 2s .5s ease both">
+    <h1 class="title-huge" style="animation:fadeUp .8s .2s ease both;letter-spacing:8px">9 МАЯ 1945</h1>
+  </div>
+  <p class="title-med" style="animation:fadeUp .7s .5s ease both;color:var(--red2);letter-spacing:3px">ПОБЕДА</p>
+
+  <div class="divider" style="animation:fadeIn .5s .8s ease both;width:300px"></div>
+
+  <div class="stats-grid" style="animation:fadeIn .8s 1s ease both;width:min(460px,85vw)">
+    <div class="stat-box">
+      <div class="stat-val gold-accent">58 000<span style="font-size:.5em">+</span></div>
+      <div class="stat-label">танков Т-34</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val gold-accent">36 000<span style="font-size:.5em">+</span></div>
+      <div class="stat-label">штурмовиков Ил-2</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val red-accent">10 000<span style="font-size:.5em">+</span></div>
+      <div class="stat-label">установок «Катюша»</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val red-accent">×4.3</div>
+      <div class="stat-label">рост производства к 1943</div>
+    </div>
+  </div>
+
+  <div class="divider" style="animation:fadeIn .5s 1.8s ease both;margin-top:14px"></div>
+  <p class="subtitle" style="animation:fadeUp .6s 1.9s ease both;max-width:480px;margin-top:10px">
+    Победа была достигнута единством<br>
+    <span style="color:var(--gold)">промышленной мощи, технического прогресса</span><br>
+    и военного искусства
+  </p>
+  <p class="ornament" style="animation:fadeIn .6s 2.4s ease both;margin-top:10px;font-size:16px">★  ★  ★</p>
+</section>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- CONTROLS -->
+<!-- ═══════════════════════════════════════ -->
+<div id="progress"></div>
+<button id="btn-restart">↺ Начать заново</button>
+
+<script>
+// ─────────────────────────────────────────
+// CANVAS PARTICLE SYSTEM
+// ─────────────────────────────────────────
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resizeCanvas() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function Particle() {
+  this.reset = function() {
+    this.x = Math.random() * W;
+    this.y = H + 10;
+    this.vy = -(Math.random() * .4 + .1);
+    this.vx = (Math.random() - .5) * .2;
+    this.r = Math.random() * 3 + 1;
+    this.alpha = Math.random() * .25 + .05;
+    this.fade = Math.random() * .003 + .001;
+    this.color = Math.random() > .7 ?
+      `rgba(${160+Math.floor(Math.random()*40)},${60+Math.floor(Math.random()*30)},20,` :
+      `rgba(${50+Math.floor(Math.random()*20)},${48+Math.floor(Math.random()*15)},${42+Math.floor(Math.random()*10)},`;
+  };
+  this.reset();
+  this.y = Math.random() * H; // scatter initially
+}
+
+for(let i=0;i<55;i++) particles.push(new Particle());
+
+function animParticles() {
+  ctx.clearRect(0,0,W,H);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.alpha -= p.fade;
+    if(p.alpha <= 0 || p.y < -10) p.reset();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = p.color + p.alpha + ')';
+    ctx.fill();
+  });
+  requestAnimationFrame(animParticles);
+}
+animParticles();
+
+// ─────────────────────────────────────────
+// SCENE MANAGEMENT
+// ─────────────────────────────────────────
+const SCENES = [
+  { id:'s1', duration:6500 },
+  { id:'s2', duration:8500 },
+  { id:'s3', duration:8500 },
+  { id:'s4', duration:9000 },
+  { id:'s5', duration:8500 },
+  { id:'s6', duration:8500 },
+  { id:'s7', duration:8000 },
+  { id:'s8', duration:9000 },
+];
+
+let current = -1, timer = null, running = true;
+
+// Build progress dots
+const prog = document.getElementById('progress');
+SCENES.forEach((_,i) => {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.id = 'dot'+i;
+  prog.appendChild(d);
+});
+
+function activateScene(idx) {
+  if(idx >= SCENES.length) {
+    document.getElementById('btn-restart').style.display = 'block';
+    return;
+  }
+  // Deactivate previous
+  if(current >= 0) {
+    document.getElementById(SCENES[current].id).classList.remove('active');
+    document.getElementById('dot'+current).classList.remove('active');
+  }
+  current = idx;
+  const sceneEl = document.getElementById(SCENES[idx].id);
+  sceneEl.classList.add('active');
+  document.getElementById('dot'+idx).classList.add('active');
+
+  // Trigger scene-specific animations
+  setTimeout(() => triggerSceneAnimations(idx), 300);
+
+  timer = setTimeout(() => activateScene(idx+1), SCENES[idx].duration);
+}
+
+function triggerSceneAnimations(idx) {
+  if(idx === 1) triggerInvasion();
+  if(idx === 2) triggerIndustry();
+  if(idx === 4) triggerStalingrad();
+  if(idx === 5) triggerKursk();
+}
+
+// ─────────────────────────────────────────
+// SCENE 2: INVASION ANIMATIONS
+// ─────────────────────────────────────────
+function triggerInvasion() {
+  // Animate SVG paths
+  ['arr1','arr2','arr3'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if(el) {
+      setTimeout(() => {
+        el.style.animation = `arrowDraw 1.2s ease forwards`;
+      }, i * 350);
+    }
+  });
+  // Animate arrowheads
+  ['arh1','arh2','arh3'].forEach((id,i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if(el) el.setAttribute('opacity','1');
+    }, 1200 + i*350);
+  });
+  // Show planes
+  setTimeout(() => {
+    const p = document.getElementById('planes-group');
+    if(p) p.setAttribute('opacity','1');
+  }, 1800);
+  // Show loss text
+  setTimeout(() => {
+    const t1 = document.getElementById('loss-text');
+    const t2 = document.getElementById('loss-text2');
+    if(t1) t1.setAttribute('opacity','1');
+    if(t2) t2.setAttribute('opacity','1');
+  }, 2500);
+  // Counter
+  setTimeout(() => countUp('counter1', 0, 3, 800, ''), 1000);
+}
+
+// ─────────────────────────────────────────
+// SCENE 3: INDUSTRY BAR
+// ─────────────────────────────────────────
+function triggerIndustry() {
+  setTimeout(() => {
+    const bar = document.getElementById('bar-industry');
+    if(bar) bar.classList.add('animate');
+  }, 600);
+}
+
+// ─────────────────────────────────────────
+// SCENE 5: STALINGRAD
+// ─────────────────────────────────────────
+function triggerStalingrad() {
+  const snArr = document.getElementById('sn-arr');
+  const ssArr = document.getElementById('ss-arr');
+  if(snArr) snArr.style.animation = 'arrowDraw 1.2s ease forwards';
+  setTimeout(() => {
+    if(ssArr) ssArr.style.animation = 'arrowDraw 1.2s ease forwards';
+  }, 400);
+  setTimeout(() => {
+    const h1 = document.getElementById('sn-head');
+    const h2 = document.getElementById('ss-head');
+    if(h1) h1.setAttribute('opacity','1');
+    if(h2) h2.setAttribute('opacity','1');
+    const gf = document.getElementById('ger-forces');
+    if(gf) gf.setAttribute('opacity','1');
+  }, 1400);
+  setTimeout(() => {
+    const ring = document.getElementById('encircle');
+    const text = document.getElementById('encircle-text');
+    if(ring) {
+      ring.setAttribute('opacity','1');
+      ring.style.transition = 'opacity .5s';
+    }
+    if(text) {
+      text.setAttribute('opacity','1');
+    }
+  }, 2500);
+}
+
+// ─────────────────────────────────────────
+// SCENE 6: KURSK
+// ─────────────────────────────────────────
+function triggerKursk() {
+  const arrows = [
+    {path:'kn-arr', head:'kn-head', delay:0},
+    {path:'ks-arr', head:'ks-head', delay:300},
+  ];
+  arrows.forEach(a => {
+    setTimeout(() => {
+      const el = document.getElementById(a.path);
+      if(el) el.style.animation = 'arrowDraw 1s ease forwards';
+    }, a.delay);
+    setTimeout(() => {
+      const h = document.getElementById(a.head);
+      if(h) h.setAttribute('opacity','1');
+    }, a.delay + 1000);
+  });
+  // Counter-arrows
+  ['kc1','kc2','kc3','kc4'].forEach((id,i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if(el) el.style.animation = 'arrowDraw .8s ease forwards';
+      const hid = id.replace('kc','kch');
+      setTimeout(() => {
+        const h = document.getElementById(hid);
+        if(h) h.setAttribute('opacity','1');
+      }, 800);
+    }, 1500 + i*200);
+  });
+}
+
+// ─────────────────────────────────────────
+// COUNT UP HELPER
+// ─────────────────────────────────────────
+function countUp(id, from, to, duration, suffix) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const step = (to - from) / (duration / 16);
+  let val = from;
+  const interval = setInterval(() => {
+    val = Math.min(val + step, to);
+    el.textContent = Math.floor(val) + suffix;
+    if(val >= to) clearInterval(interval);
+  }, 16);
+}
+
+// ─────────────────────────────────────────
+// RESTART
+// ─────────────────────────────────────────
+document.getElementById('btn-restart').addEventListener('click', () => {
+  document.getElementById('btn-restart').style.display = 'none';
+  // Reset all scenes
+  SCENES.forEach(s => {
+    const el = document.getElementById(s.id);
+    el.classList.remove('active');
+  });
+  // Reset SVG animations by cloning
+  resetSVGAnimations();
+  current = -1;
+  setTimeout(() => activateScene(0), 100);
+});
+
+function resetSVGAnimations() {
+  // Reset progress bar
+  const bar = document.getElementById('bar-industry');
+  if(bar) bar.classList.remove('animate');
+  // Reset SVG arrows by resetting dashoffset
+  ['arr1','arr2','arr3','sn-arr','ss-arr','kn-arr','ks-arr','kc1','kc2','kc3','kc4'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) { el.style.animation = 'none'; el.setAttribute('stroke-dashoffset','400'); }
+  });
+  ['arh1','arh2','arh3','sn-head','ss-head','kn-head','ks-head','kch1','kch2','kch3','kch4'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.setAttribute('opacity','0');
+  });
+  ['planes-group','loss-text','loss-text2','ger-forces'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.setAttribute('opacity','0');
+  });
+  const ring = document.getElementById('encircle');
+  if(ring) ring.setAttribute('opacity','0');
+  const txt = document.getElementById('encircle-text');
+  if(txt) txt.setAttribute('opacity','0');
+}
+
+// ─────────────────────────────────────────
+// START
+// ─────────────────────────────────────────
+setTimeout(() => activateScene(0), 500);
+</script>
+</body>
+</html>
